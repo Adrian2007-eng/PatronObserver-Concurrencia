@@ -1,14 +1,72 @@
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class EventManager {
 
-    private Map<String,List<EventListener>> listeners;
+    private HashMap<String, List<EventListener>> listeners =
+            new HashMap<>();
 
-    private ExecutorService executor;
+    private ExecutorService executor =
+            Executors.newFixedThreadPool(4);
 
-    public void subscribe(...) { }
+    public void subscribe(
+            String eventType,
+            EventListener listener) {
 
-    public void unsubscribe(...) { }
+        listeners
+                .computeIfAbsent(
+                        eventType,
+                        k -> new ArrayList<>())
+                .add(listener);
+    }
 
-    public void notify(...) { }
+    public void unsubscribe(
+            String eventType,
+            EventListener listener) {
 
-    public void shutdown() { }
+        List<EventListener> users =
+                listeners.get(eventType);
+
+        if (users != null) {
+            users.remove(listener);
+        }
+    }
+
+    public void notify(
+            String eventType,
+            String data) {
+
+        List<EventListener> users =
+                listeners.get(eventType);
+
+        if (users == null) {
+            return;
+        }
+
+        for (EventListener listener : users) {
+
+            executor.submit(() -> {
+                try {
+
+                    System.out.println(
+                            "Ejecutando en: "
+                            + Thread.currentThread().getName()
+                    );
+
+                    listener.update(data);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+    }
+
+    public void shutdown() {
+        executor.shutdown();
+    }
 }
